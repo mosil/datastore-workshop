@@ -31,7 +31,7 @@ class DataStoreRepo(private val dataStore: DataStore<Preferences>) {
   suspend fun login(userData: UserData) {
     dataStore.edit { preferences ->
       preferences[PreferencesKeys.ACCOUNT] = userData.name
-      preferences[PreferencesKeys.ID] = userData.name
+      preferences[PreferencesKeys.ID] = userData.deviceId
       preferences[PreferencesKeys.TIME] = userData.modifyTime
     }
   }
