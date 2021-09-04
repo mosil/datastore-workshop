@@ -1,28 +1,21 @@
 package space.mosil.workshop.datastore
 
 import android.content.Context
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.datastore.preferences.SharedPreferencesMigration
 import androidx.datastore.preferences.preferencesDataStore
-import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.textfield.TextInputEditText
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.launch
 import java.util.*
 
 private const val DATA_PREFERENCES_NAME = "data_preferences"
 
 private val Context.dataStore by preferencesDataStore(
-  name = DATA_PREFERENCES_NAME,
-  produceMigrations = { context ->
-    listOf(SharedPreferencesMigration(context, DATA_PREFERENCES_NAME))
-  }
+  name = DATA_PREFERENCES_NAME
 )
 
 class MainActivity : AppCompatActivity() {
@@ -33,14 +26,16 @@ class MainActivity : AppCompatActivity() {
   lateinit var btnSave: AppCompatButton
   lateinit var btnClear: AppCompatButton
 
-  lateinit var repo: DataRepo
-
-  private val dsRepo = DataStoreRepo(dataStore)
-  private val dsRepoFlow = dsRepo.userDataFlow
+  lateinit var viewModel: MainViewModel
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     setContentView(R.layout.activity_main)
+
+    viewModel = ViewModelProvider(
+      this,
+      MainViewModelFactory(DataStoreRepo(dataStore))
+    ).get(MainViewModel::class.java)
 
     edtAccount = findViewById(R.id.edt_main_account)
     txtDeviceId = findViewById(R.id.txt_main_device_id)
@@ -51,7 +46,8 @@ class MainActivity : AppCompatActivity() {
     setData()
 
     btnGenerateDeviceId.setOnClickListener {
-      txtDeviceId.text = UUID.randomUUID().toString()
+//      txtDeviceId.text = UUID.randomUUID().toString()
+      viewModel.setDeviceId(UUID.randomUUID().toString())
     }
 
     btnSave.setOnClickListener {
@@ -72,20 +68,16 @@ class MainActivity : AppCompatActivity() {
   }
 
   private fun saveUser(account: String) {
-    lifecycleScope.launch(Dispatchers.IO) {
-      val user = UserData(account, txtDeviceId.text.toString())
-      dsRepo.login(user)
-    }
+    val user = UserData(account, txtDeviceId.text.toString())
+    viewModel.login(user)
   }
 
   private fun setData() {
-    lifecycleScope.launch(Dispatchers.IO) {
-      dsRepoFlow.collect { user ->
-        if (user.isLogin()) {
-          edtAccount.setText(user.name)
-          txtDeviceId.text = user.deviceId
-        }
+    viewModel.user.observe(this) { user ->
+      if (user.isLogin()) {
+        edtAccount.setText(user.name)
       }
+      txtDeviceId.text = user.deviceId
     }
   }
 }

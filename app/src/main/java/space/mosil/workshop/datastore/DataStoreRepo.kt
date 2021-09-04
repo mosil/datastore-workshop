@@ -1,11 +1,11 @@
 package space.mosil.workshop.datastore
 
-import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEmpty
 import java.io.IOException
 
 class DataStoreRepo(private val dataStore: DataStore<Preferences>) {
@@ -22,6 +22,8 @@ class DataStoreRepo(private val dataStore: DataStore<Preferences>) {
     } else {
       throw exception
     }
+  }.onEmpty {
+    emit(emptyPreferences())
   }.map { preferences ->
     val account = preferences[PreferencesKeys.ACCOUNT] ?: ""
     val id = preferences[PreferencesKeys.ID] ?: ""
@@ -31,8 +33,14 @@ class DataStoreRepo(private val dataStore: DataStore<Preferences>) {
   suspend fun login(userData: UserData) {
     dataStore.edit { preferences ->
       preferences[PreferencesKeys.ACCOUNT] = userData.name
-      preferences[PreferencesKeys.ID] = userData.name
+      preferences[PreferencesKeys.ID] = userData.deviceId
       preferences[PreferencesKeys.TIME] = userData.modifyTime
+    }
+  }
+
+  suspend fun update(deviceId: String) {
+    dataStore.edit { preferences ->
+      preferences[PreferencesKeys.ID] = deviceId
     }
   }
 
